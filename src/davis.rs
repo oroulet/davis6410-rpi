@@ -7,7 +7,31 @@ use std::{
 };
 
 use anyhow::Result;
-use rppal::gpio::{InputPin, Trigger};
+use rppal::gpio::{Gpio, InputPin, Trigger};
+use tokio::time::sleep;
+
+#[derive(Debug)]
+pub struct Davis {
+    gpio: Gpio,
+    counting_handle: std::thread::JoinHandle<Result<()>>,
+    update_handle: tokio::task::JoinHandle<Result<()>>,
+}
+
+impl Davis {
+    pub async fn connect() -> Result<Self> {
+        let data = Arc::new(WindSpeedData::new());
+        let new_data = data.clone();
+        let gpio = Gpio::new()?;
+        let wind_speed = gpio.get(5)?.into_input_pullup();
+        let counting_handle = std::thread::spawn(move || counting_sync_loop(new_data, wind_speed));
+        let update_handle = tokio::task::spawn(async move { fetch_data_loop(data).await });
+        Ok(Davis {
+            gpio,
+            counting_handle,
+            update_handle,
+        })
+    }
+}
 
 pub struct WindSpeedData {
     count: AtomicU64,
@@ -50,7 +74,7 @@ impl Default for WindSpeedData {
     }
 }
 
-pub fn count_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<()> {
+pub fn counting_sync_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<()> {
     io.set_interrupt(Trigger::RisingEdge)?;
     loop {
         match io.poll_interrupt(true, Some(Duration::from_secs(10))) {
@@ -64,5 +88,22 @@ pub fn count_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<()> {
                 data.increase();
             }
         }
+    }
+}
+
+pub async fn fetch_data_loop(data: Arc<WindSpeedData>) -> Result<()> {
+    //let wind_dir = gpio.get(6)?.into_input();
+    let mut last = Instant::now();
+    loop {
+        let elapsed = Instant::now() - last;
+        if elapsed.as_secs_f64() > 2.0 {
+            last = Instant::now();
+            dbg!(data.get_speed());
+        }
+
+        //let speed = wind_speed.read();
+        //let dir = wind_dir.read();
+        //dbg!(speed, dir);
+        sleep(Duration::from_secs_f64(0.01)).await;
     }
 }

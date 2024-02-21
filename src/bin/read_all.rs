@@ -2,14 +2,14 @@ use std::{sync::Arc, time::Instant};
 
 use anyhow::Result;
 use rppal::gpio::Gpio;
-use rust_wind::davis::{count_loop, WindSpeedData};
+use rust_wind::davis::{counting_sync_loop, WindSpeedData};
 
 fn main() -> Result<()> {
     let data = Arc::new(WindSpeedData::new());
     let gpio = Gpio::new()?;
     let wind_speed = gpio.get(5)?.into_input_pullup();
     let new_data = data.clone();
-    std::thread::spawn(|| count_loop(new_data, wind_speed));
+    std::thread::spawn(|| counting_sync_loop(new_data, wind_speed));
     //let wind_dir = gpio.get(6)?.into_input();
     let mut last = Instant::now();
     loop {
