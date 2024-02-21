@@ -36,7 +36,7 @@ impl WindSpeedData {
         let wind_speed_mph = count as f64 * (2.25 / elapsed.as_secs_f64());
 
         dbg!(count, elapsed, self.count.load(Ordering::SeqCst));
-        wind_speed_mph * 0.447
+        wind_speed_mph * 0.44704
     }
 
     pub fn increase(&self) {
@@ -47,11 +47,11 @@ impl WindSpeedData {
 fn count_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<()> {
     io.set_interrupt(Trigger::RisingEdge)?;
     loop {
-        match io.poll_interrupt(false, Some(Duration::from_secs(10))) {
+        match io.poll_interrupt(true, Some(Duration::from_secs(10))) {
             Err(_e) => (),
             Ok(_info) => {
                 let mut ts = data.state_ts.lock().unwrap();
-                if Instant::now() - *ts < Duration::from_secs_f64(0.005) {
+                if Instant::now() - *ts < Duration::from_secs_f64(0.002) {
                     continue;
                 };
                 *ts = Instant::now();
@@ -64,7 +64,7 @@ fn count_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<()> {
 fn main() -> Result<()> {
     let data = Arc::new(WindSpeedData::new());
     let gpio = Gpio::new()?;
-    let wind_speed = gpio.get(5)?.into_input();
+    let wind_speed = gpio.get(5)?.into_input_pullup();
     let new_data = data.clone();
     std::thread::spawn(|| count_loop(new_data, wind_speed));
     //let wind_dir = gpio.get(6)?.into_input();
