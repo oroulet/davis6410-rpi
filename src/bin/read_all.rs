@@ -2,10 +2,10 @@ use std::{sync::Arc, time::Instant};
 
 use anyhow::Result;
 use rppal::gpio::Gpio;
-use rust_wind::davis::{counting_sync_loop, WindSpeedData};
+use rust_wind::davis::{counting_sync_loop, SensorData};
 
 fn main() -> Result<()> {
-    let data = Arc::new(WindSpeedData::new());
+    let data = Arc::new(SensorData::new());
     let gpio = Gpio::new()?;
     let wind_speed = gpio.get(5)?.into_input_pullup();
     let new_data = data.clone();

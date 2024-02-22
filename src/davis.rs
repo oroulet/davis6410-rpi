@@ -20,11 +20,11 @@ pub struct Davis {
 impl Davis {
     pub async fn connect() -> Result<Self> {
         dbg!("start connect to Davis sensor");
-        let data = Arc::new(WindSpeedData::new());
+        let data = Arc::new(SensorData::new());
         let gpio = Gpio::new()?;
         let wind_speed = gpio.get(5)?.into_input_pullup();
         let new_data = data.clone();
-        let counting_handle = std::thread::spawn( || counting_sync_loop(new_data, wind_speed));
+        let counting_handle = std::thread::spawn(|| counting_sync_loop(new_data, wind_speed));
         let update_handle = tokio::task::spawn(async move { fetch_data_loop(data).await });
         dbg!("end connect");
         Ok(Davis {
@@ -33,20 +33,23 @@ impl Davis {
             update_handle,
         })
     }
+    pub fn get_current_wind(&self) -> f64 {
+        1.23
+    }
 }
 
-pub struct WindSpeedData {
+pub struct SensorData {
     count: AtomicU64,
     last_call: Mutex<Instant>,
-    state_ts: Mutex<Instant>,
+    rising_edge_ts: Mutex<Instant>,
 }
 
-impl WindSpeedData {
+impl SensorData {
     pub fn new() -> Self {
         Self {
             count: AtomicU64::new(0),
             last_call: Mutex::new(Instant::now()),
-            state_ts: Mutex::new(Instant::now()),
+            rising_edge_ts: Mutex::new(Instant::now()),
         }
     }
     pub fn get_speed(&self) -> f64 {
@@ -64,37 +67,33 @@ impl WindSpeedData {
         dbg!(count, elapsed, self.count.load(Ordering::SeqCst));
         wind_speed_mph * 0.44704
     }
-
-    pub fn increase(&self) {
-        self.count.fetch_add(1, Ordering::SeqCst);
-    }
 }
 
-impl Default for WindSpeedData {
+impl Default for SensorData {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub fn counting_sync_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<()> {
+pub fn counting_sync_loop(data: Arc<SensorData>, mut io: InputPin) -> Result<()> {
     io.set_interrupt(Trigger::RisingEdge)?;
     loop {
         match io.poll_interrupt(true, Some(Duration::from_secs(10))) {
             Err(_e) => (),
             Ok(_info) => {
                 dbg!("count");
-                let mut ts = data.state_ts.lock().unwrap();
+                let mut ts = data.rising_edge_ts.lock().unwrap();
                 if Instant::now() - *ts < Duration::from_secs_f64(0.002) {
                     continue;
                 };
                 *ts = Instant::now();
-                data.increase();
+                data.count.fetch_add(1, Ordering::SeqCst);
             }
         }
     }
 }
 
-pub async fn fetch_data_loop(data: Arc<WindSpeedData>) -> Result<()> {
+pub async fn fetch_data_loop(data: Arc<SensorData>) -> Result<()> {
     //let wind_dir = gpio.get(6)?.into_input();
     let mut last = Instant::now();
     loop {
