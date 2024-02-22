@@ -5,7 +5,7 @@ use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    run_server().await;
+    //run_server().await;
     let _davis = Davis::connect().await;
 
     match signal::ctrl_c().await {

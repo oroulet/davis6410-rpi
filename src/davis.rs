@@ -19,12 +19,14 @@ pub struct Davis {
 
 impl Davis {
     pub async fn connect() -> Result<Self> {
+        dbg!("start connect to Davis sensor");
         let data = Arc::new(WindSpeedData::new());
-        let new_data = data.clone();
         let gpio = Gpio::new()?;
         let wind_speed = gpio.get(5)?.into_input_pullup();
-        let counting_handle = std::thread::spawn(move || counting_sync_loop(new_data, wind_speed));
+        let new_data = data.clone();
+        let counting_handle = std::thread::spawn( || counting_sync_loop(new_data, wind_speed));
         let update_handle = tokio::task::spawn(async move { fetch_data_loop(data).await });
+        dbg!("end connect");
         Ok(Davis {
             gpio,
             counting_handle,
@@ -80,6 +82,7 @@ pub fn counting_sync_loop(data: Arc<WindSpeedData>, mut io: InputPin) -> Result<
         match io.poll_interrupt(true, Some(Duration::from_secs(10))) {
             Err(_e) => (),
             Ok(_info) => {
+                dbg!("count");
                 let mut ts = data.state_ts.lock().unwrap();
                 if Instant::now() - *ts < Duration::from_secs_f64(0.002) {
                     continue;

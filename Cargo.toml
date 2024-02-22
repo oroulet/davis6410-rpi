@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.80"
 rppal = "0.17.1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "macros", "signal"] }
 warp = "0.3"
