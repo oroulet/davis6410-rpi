@@ -32,12 +32,12 @@ pub async fn run_server(
         .or(live)
         .with(warp::cors().allow_any_origin());
 
+    tracing::warn!("Starting server on {:?}", &addr);
     let (_addr, server) = warp::serve(routes).bind_with_graceful_shutdown(addr, async move {
         shutdown_rx.changed().await.ok();
         tracing::warn!("closing robot rest interface");
     });
     server.await
-    //warp::serve(hello).run(([127, 0, 0, 1], 8080)).await;
 }
 
 pub struct WindServer {

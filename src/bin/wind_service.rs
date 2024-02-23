@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tracing_subscriber;
 
 use rust_wind::{api::WindServer, davis::Davis};
 use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    //run_server().await;
+    tracing_subscriber::fmt::init();
     let davis = Arc::new(Davis::connect().await?);
-    WindServer::run(davis.clone(), "127.0.0.1:80".parse()?).await;
+    let http_server = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?).await;
 
     match signal::ctrl_c().await {
         Ok(()) => {
@@ -20,6 +21,7 @@ async fn main() -> Result<()> {
             // we also shut d(own in case of error
         }
     }
+    http_server.stop().await?;
 
     Ok(())
 }
