@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use tracing_subscriber;
 
 use rust_wind::{api::WindServer, davis::Davis};
 use tokio::signal;
