@@ -7,8 +7,8 @@ use warp::Filter;
 use crate::davis::Davis;
 
 async fn state_query(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
-    let speed = sensor.get_current_wind();
-    Ok(warp::reply::html(format!("Current speed is {}", speed)))
+    let speed = sensor.last_data().await;
+    Ok(warp::reply::html(format!("Current speed is {:?}", speed)))
 }
 
 pub async fn run_server(
@@ -21,8 +21,8 @@ pub async fn run_server(
     let hello = warp::path!("hello" / String).map(|name| format!("Hello, {}!", name));
 
     let live = warp::get()
-        .and(warp::path("v1"))
-        .and(warp::path("current_wind"))
+        .and(warp::path("wind"))
+        .and(warp::path("last_data"))
         .and(warp::path::end())
         .and(with_context.clone())
         .and_then(state_query);
