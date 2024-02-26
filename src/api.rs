@@ -1,14 +1,33 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use anyhow::Result;
+use serde::Deserialize;
 use tokio::sync::watch;
 use warp::Filter;
 
 use crate::davis::Davis;
 
+#[derive(Debug, Deserialize)]
+struct MyDuration {
+    duration: f64,
+}
+
 async fn state_query(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
     let speed = sensor.last_data().await;
     Ok(warp::reply::html(format!("Current speed is {:?}", speed)))
+}
+
+async fn handle_request(
+    query: MyDuration,
+    sensor: Arc<Davis>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    match sensor
+        .data_since(Duration::from_secs_f64(query.duration))
+        .await
+    {
+        Ok(measurements) => Ok(warp::reply::html(format!("{:?}", measurements))),
+        _ => Err(warp::reject()),
+    }
 }
 
 pub async fn run_server(
@@ -27,9 +46,17 @@ pub async fn run_server(
         .and(with_context.clone())
         .and_then(state_query);
 
+    let data_since = warp::get()
+        .and(warp::path("wind"))
+        .and(warp::path("data_since"))
+        .and(warp::query::<MyDuration>())
+        .and(with_context.clone())
+        .and_then(handle_request);
+
     let routes = root
         .or(hello)
         .or(live)
+        .or(data_since)
         .with(warp::cors().allow_any_origin());
 
     tracing::warn!("Starting server on {:?}", &addr);
