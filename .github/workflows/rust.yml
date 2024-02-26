@@ -24,10 +24,7 @@ jobs:
       run: |
         touch db.sqlite
         sqlite3 db.sqlite "CREATE TABLE IF NOT EXISTS wind (ts REAL PRIMARY KEY, vel  REAL, direction  INTEGER)"
-
-
     - name: Lint
-      run: 
       run: cargo clippy -- --allow dead_code --allow clippy::missing_errors_doc
     - name: Build
       run: cargo build --verbose
