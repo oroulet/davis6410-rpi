@@ -21,13 +21,17 @@ pub struct Davis {
 }
 
 impl Davis {
-    pub async fn connect(db_path: String) -> Result<Self> {
+    pub async fn connect(db_path: String, simulation: bool) -> Result<Self> {
         dbg!("start connect to Davis sensor");
         let db = Arc::new(DB::connect(db_path).await?);
         let period = 5.0;
         let counter = Arc::new(AtomicU64::new(0));
         let counter_ptr = counter.clone();
-        let counting_handle = std::thread::spawn(|| counting_sync_loop(counter_ptr));
+        let counting_handle = if simulation {
+            std::thread::spawn(move || fake_counting_sync_loop(counter_ptr, period))
+        } else {
+            std::thread::spawn(|| counting_sync_loop(counter_ptr))
+        };
         let db_clone = db.clone();
         let update_handle =
             tokio::task::spawn(async move { fetch_data_loop(period, counter, db_clone).await });
@@ -46,6 +50,23 @@ impl Davis {
 
     pub async fn data_since(&self, t: Duration) -> Result<Vec<Measurement>> {
         self.db.data_since(t).await
+    }
+}
+
+pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) -> Result<()> {
+    let mut sleep_time = period / 10.0;
+    let mut start_ts = Instant::now();
+    loop {
+        counter.fetch_add(1, Ordering::SeqCst);
+        dbg!("sleep", &sleep_time);
+        std::thread::sleep(Duration::from_secs_f64(sleep_time));
+        let duration_since_start = (Instant::now() - start_ts).as_secs_f64();
+        if duration_since_start > period * 1.5 {
+            sleep_time = period / 100.0;
+        } else if duration_since_start > 3.5 * period {
+            sleep_time = period / 10.0;
+            start_ts = Instant::now();
+        }
     }
 }
 
@@ -83,5 +104,37 @@ pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) 
         dbg!(&vel);
         db.insert_measurement(vel, 0).await?;
         sleep(Duration::from_secs_f64(period)).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::{sync::Once, time::SystemTime};
+
+    use anyhow::Result;
+
+    use super::*;
+
+    static START: Once = Once::new();
+
+    fn init_tracing() {
+        START.call_once(|| {
+            tracing_subscriber::fmt::init();
+        });
+    }
+
+    #[tokio::test]
+    async fn test_davis() -> Result<()> {
+        init_tracing();
+
+        let start = SystemTime::now();
+        let davis = Davis::connect(String::from("./db-test2.sqlite"), true).await?;
+        sleep(Duration::from_secs(6)).await;
+        let data = davis.last_data().await?;
+        assert!(data.vel > 0.0);
+        assert!(data.ts > start);
+        assert_eq!(1, 2);
+        Ok(())
     }
 }

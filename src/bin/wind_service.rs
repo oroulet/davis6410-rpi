@@ -8,7 +8,7 @@ use tokio::signal;
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-    let davis = Arc::new(Davis::connect(String::from("./db.sqlite")).await?);
+    let davis = Arc::new(Davis::connect(String::from("./db.sqlite"), false).await?);
     let http_server = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?).await;
 
     match signal::ctrl_c().await {

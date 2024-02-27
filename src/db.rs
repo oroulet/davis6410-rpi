@@ -12,9 +12,9 @@ pub struct DB {
 
 #[derive(Debug, Serialize)]
 pub struct Measurement {
-    ts: SystemTime,
-    vel: f64,
-    direction: u16,
+    pub ts: SystemTime,
+    pub vel: f64,
+    pub direction: u16,
 }
 
 impl DB {
