@@ -12,12 +12,14 @@ struct MyDuration {
     duration: f64,
 }
 
-async fn state_query(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
-    let speed = sensor.last_data().await;
-    Ok(warp::reply::html(format!("Current speed is {:?}", speed)))
+async fn query_last_data(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
+    match sensor.last_data().await {
+        Ok(measurement) => Ok(warp::reply::json(&measurement)),
+        _ => Err(warp::reject()),
+    }
 }
 
-async fn handle_request(
+async fn query_data_since(
     query: MyDuration,
     sensor: Arc<Davis>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -25,7 +27,7 @@ async fn handle_request(
         .data_since(Duration::from_secs_f64(query.duration))
         .await
     {
-        Ok(measurements) => Ok(warp::reply::html(format!("{:?}", measurements))),
+        Ok(measurements) => Ok(warp::reply::json(&measurements)),
         _ => Err(warp::reject()),
     }
 }
@@ -36,26 +38,27 @@ pub async fn run_server(
     mut shutdown_rx: watch::Receiver<()>,
 ) {
     let with_context = warp::any().map(move || context.clone());
-    let root = warp::path::end().map(|| " I am a robot in state ");
-    let hello = warp::path!("hello" / String).map(|name| format!("Hello, {}!", name));
+    let root = warp::get()
+        .and(warp::path::end())
+        .and(with_context.clone())
+        .and_then(query_last_data);
 
-    let live = warp::get()
+    let last_data = warp::get()
         .and(warp::path("wind"))
         .and(warp::path("last_data"))
         .and(warp::path::end())
         .and(with_context.clone())
-        .and_then(state_query);
+        .and_then(query_last_data);
 
     let data_since = warp::get()
         .and(warp::path("wind"))
         .and(warp::path("data_since"))
         .and(warp::query::<MyDuration>())
         .and(with_context.clone())
-        .and_then(handle_request);
+        .and_then(query_data_since);
 
     let routes = root
-        .or(hello)
-        .or(live)
+        .or(last_data)
         .or(data_since)
         .with(warp::cors().allow_any_origin());
 

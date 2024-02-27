@@ -1,6 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
+use serde::Serialize;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::{Sqlite, SqlitePool};
 
@@ -9,7 +10,7 @@ pub struct DB {
     pool: SqlitePool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Measurement {
     ts: SystemTime,
     vel: f64,
