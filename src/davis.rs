@@ -14,8 +14,8 @@ use crate::db::{Measurement, DB};
 
 #[derive(Debug)]
 pub struct Davis {
-    counting_handle: std::thread::JoinHandle<Result<()>>,
-    update_handle: tokio::task::JoinHandle<Result<()>>,
+    counting_handle: std::thread::JoinHandle<()>,
+    update_handle: tokio::task::JoinHandle<()>,
     period: f64,
     db: Arc<DB>,
 }
@@ -53,24 +53,30 @@ impl Davis {
     }
 }
 
-pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) -> Result<()> {
+pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) {
     let mut sleep_time = period / 10.0;
     let mut start_ts = Instant::now();
     loop {
         counter.fetch_add(1, Ordering::SeqCst);
-        dbg!("sleep", &sleep_time);
         std::thread::sleep(Duration::from_secs_f64(sleep_time));
         let duration_since_start = (Instant::now() - start_ts).as_secs_f64();
-        if duration_since_start > period * 1.5 {
-            sleep_time = period / 100.0;
-        } else if duration_since_start > 3.5 * period {
+        if duration_since_start > 2.5 * period {
             sleep_time = period / 10.0;
             start_ts = Instant::now();
+        } else if duration_since_start > period * 1.5 {
+            sleep_time = period / 100.0;
         }
     }
 }
 
-pub fn counting_sync_loop(counter: Arc<AtomicU64>) -> Result<()> {
+pub fn counting_sync_loop(counter: Arc<AtomicU64>) {
+    if let Err(err) = counting_sync_loop_inner(counter) {
+        tracing::error!("HW loop has died, {:?} ", err);
+        panic!("If we fail here, no need to continue");
+    }
+}
+
+pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
     let gpio = Gpio::new()?;
     let mut wind_io = gpio.get(5)?.into_input_pullup();
     wind_io.set_interrupt(Trigger::RisingEdge)?;
@@ -90,7 +96,7 @@ pub fn counting_sync_loop(counter: Arc<AtomicU64>) -> Result<()> {
     }
 }
 
-pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) -> Result<()> {
+pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) {
     let mut last_call = Instant::now();
     loop {
         let now = Instant::now();
@@ -102,7 +108,9 @@ pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) 
         dbg!(count, elapsed, counter.load(Ordering::SeqCst));
         let vel = wind_speed_mph * 0.44704;
         dbg!(&vel);
-        db.insert_measurement(vel, 0).await?;
+        if let Err(err) = db.insert_measurement(vel, 0).await {
+            tracing::error!("Failed to write measurement in DB!, {:?}", err)
+        }
         sleep(Duration::from_secs_f64(period)).await;
     }
 }
