@@ -128,24 +128,15 @@ impl DB {
 #[cfg(test)]
 mod tests {
 
-    use std::sync::Once;
-
     use anyhow::Result;
+    use tracing_test::traced_test;
 
     use super::*;
 
-    static START: Once = Once::new();
-
-    fn init_tracing() {
-        START.call_once(|| {
-            tracing_subscriber::fmt::init();
-        });
-    }
-
     #[tokio::test]
+    #[traced_test]
     async fn test_db() -> Result<()> {
-        init_tracing();
-        let db = DB::connect("./test_db.sqlite".to_string()).await?;
+        let db = DB::connect("./test_db1.sqlite".to_string()).await?;
         db.create_tables(true).await?;
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)? - Duration::from_secs(10);
         db.insert_measurement_at_t(ts, 50000.0, 2).await?;

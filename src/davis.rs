@@ -110,31 +110,22 @@ pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) 
 #[cfg(test)]
 mod tests {
 
-    use std::{sync::Once, time::SystemTime};
+    use std::time::SystemTime;
 
     use anyhow::Result;
+    use tracing_test::traced_test;
 
     use super::*;
 
-    static START: Once = Once::new();
-
-    fn init_tracing() {
-        START.call_once(|| {
-            tracing_subscriber::fmt::init();
-        });
-    }
-
     #[tokio::test]
+    #[traced_test]
     async fn test_davis() -> Result<()> {
-        init_tracing();
-
         let start = SystemTime::now();
         let davis = Davis::connect(String::from("./db-test2.sqlite"), true).await?;
         sleep(Duration::from_secs(6)).await;
         let data = davis.last_data().await?;
         assert!(data.vel > 0.0);
         assert!(data.ts > start);
-        assert_eq!(1, 2);
         Ok(())
     }
 }
