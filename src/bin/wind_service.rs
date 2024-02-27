@@ -18,16 +18,20 @@ async fn main() -> Result<()> {
         .get_matches();
     let emulation = matches.get_one::<bool>("emulation").unwrap();
 
+    println!(
+        "Starting Wind Sensor Service with emulation {:?}",
+        emulation
+    );
+
     let davis = Arc::new(Davis::connect(String::from("./db.sqlite"), *emulation).await?);
     let http_server = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?).await;
 
     match signal::ctrl_c().await {
         Ok(()) => {
-            println!("Ctrl-C catched");
+            tracing::info!("Ctrl-C catched");
         }
         Err(err) => {
-            eprintln!("Unable to listen for shutdown signal: {err}");
-            // we also shut d(own in case of error
+            tracing::warn!("Unable to listen for shutdown signal: {err}");
         }
     }
     http_server.stop().await?;

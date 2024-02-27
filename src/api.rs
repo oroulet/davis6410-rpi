@@ -62,10 +62,10 @@ pub async fn run_server(
         .or(data_since)
         .with(warp::cors().allow_any_origin());
 
-    tracing::warn!("Starting server on {:?}", &addr);
+    println!("Starting server on {:?}", &addr);
     let (_addr, server) = warp::serve(routes).bind_with_graceful_shutdown(addr, async move {
         shutdown_rx.changed().await.ok();
-        tracing::warn!("closing robot rest interface");
+        tracing::info!("closing robot rest interface");
     });
     server.await
 }

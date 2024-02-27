@@ -22,7 +22,7 @@ pub struct Davis {
 
 impl Davis {
     pub async fn connect(db_path: String, simulation: bool) -> Result<Self> {
-        dbg!("start connect to Davis sensor");
+        tracing::info!("start connect to Davis sensor");
         let db = Arc::new(DB::connect(db_path).await?);
         let period = 5.0;
         let counter = Arc::new(AtomicU64::new(0));
@@ -35,7 +35,6 @@ impl Davis {
         let db_clone = db.clone();
         let update_handle =
             tokio::task::spawn(async move { fetch_data_loop(period, counter, db_clone).await });
-        dbg!("end connect");
         Ok(Davis {
             counting_handle,
             update_handle,
@@ -85,7 +84,6 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
         match wind_io.poll_interrupt(true, Some(Duration::from_secs(10))) {
             Err(_e) => (),
             Ok(_info) => {
-                dbg!("count");
                 if Instant::now() - ts < Duration::from_secs_f64(0.002) {
                     continue;
                 };
@@ -105,9 +103,9 @@ pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) 
         let count = counter.swap(0, Ordering::SeqCst);
         let wind_speed_mph = count as f64 * (2.25 / elapsed.as_secs_f64());
 
-        dbg!(count, elapsed, counter.load(Ordering::SeqCst));
+        tracing::debug!("Number of IO edges: {:?}", &count);
         let vel = wind_speed_mph * 0.44704;
-        dbg!(&vel);
+        tracing::info!("Read vel: {:?}", &vel);
         if let Err(err) = db.insert_measurement(vel, 0).await {
             tracing::error!("Failed to write measurement in DB!, {:?}", err)
         }

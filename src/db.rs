@@ -20,17 +20,16 @@ pub struct Measurement {
 impl DB {
     pub async fn connect(path: String) -> Result<Self> {
         if !Sqlite::database_exists(&path).await.unwrap_or(false) {
-            println!("Creating database {}", &path);
+            tracing::warn!("Creating database {}", &path);
             match Sqlite::create_database(&path).await {
                 Ok(_) => println!("Create db success"),
                 Err(error) => panic!("error: {}", error),
             }
         } else {
-            println!("Database already exists");
+            tracing::info!("Database already exists");
         }
 
         let pool = sqlx::SqlitePool::connect(path.as_str()).await?;
-        tracing::warn!("DB opened");
         let db = Self { pool };
         db.create_tables(false).await?;
         Ok(db)
@@ -43,7 +42,7 @@ impl DB {
                 .execute(&self.pool)
                 .await?;
         }
-        tracing::warn!("Creating tables");
+        tracing::info!("Creating tables if needed");
         sqlx::query!(
             "CREATE TABLE IF NOT EXISTS wind (
             ts    REAL PRIMARY KEY,
@@ -53,8 +52,6 @@ impl DB {
         )
         .execute(&self.pool)
         .await?;
-
-        tracing::warn!("Tables created");
         Ok(())
     }
 
@@ -104,7 +101,7 @@ impl DB {
             };
             measurements.push(mesurement);
         }
-        dbg!(&measurements);
+        tracing::info!("Sending range: {:?}", &measurements);
         Ok(measurements)
     }
 
@@ -112,7 +109,7 @@ impl DB {
         let row = sqlx::query!("SELECT ts, vel, direction  FROM wind ORDER BY ts DESC LIMIT 1",)
             .fetch_one(&self.pool)
             .await?;
-        dbg!(&row);
+        tracing::info!("Sending last data: {:?}", &row);
         Ok(Measurement {
             ts: UNIX_EPOCH
                 + Duration::from_secs_f64(row.ts.ok_or_else(|| anyhow::anyhow!("Not found"))?),
