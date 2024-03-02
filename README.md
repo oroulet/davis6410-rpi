@@ -6,6 +6,8 @@ Inspired by https://www.shapemaker.io/blog/wind-speed-measurements-with-anemomet
 
 `cargo run --bin wind_service -- --emulation `
 
+# Todo
 
+* remove old entries
 
 

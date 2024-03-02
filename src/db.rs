@@ -12,7 +12,7 @@ pub struct DB {
 
 #[derive(Debug, Serialize)]
 pub struct Measurement {
-    pub ts: SystemTime,
+    pub ts: f64,
     pub vel: f64,
     pub direction: u16,
 }
@@ -91,9 +91,8 @@ impl DB {
         let mut measurements = Vec::new();
         for row in res {
             let mesurement = Measurement {
-                ts: UNIX_EPOCH
-                    + Duration::from_secs_f64(row.ts.ok_or_else(|| anyhow::anyhow!("Not found"))?),
-                vel: row.vel.ok_or_else(|| anyhow::anyhow!("Not found"))?,
+                ts: row.ts.ok_or_else(|| anyhow::anyhow!("not found"))?,
+                vel: row.vel.ok_or_else(|| anyhow::anyhow!("not found"))?,
                 direction: row
                     .direction
                     .ok_or_else(|| anyhow::anyhow!("Not found"))?
@@ -111,8 +110,7 @@ impl DB {
             .await?;
         tracing::info!("Sending last data: {:?}", &row);
         Ok(Measurement {
-            ts: UNIX_EPOCH
-                + Duration::from_secs_f64(row.ts.ok_or_else(|| anyhow::anyhow!("Not found"))?),
+            ts: row.ts.ok_or_else(|| anyhow::anyhow!("not found"))?,
             vel: row.vel.ok_or_else(|| anyhow::anyhow!("Not found"))?,
             direction: row
                 .direction

@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Chart.js Example</title>
+    <title>Wind</title>
     <script src="chart.js"></script>
 </head>
 <body>
@@ -10,18 +10,19 @@
     <script>
         var ctx = document.getElementById('myChart').getContext('2d');
         var myChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                labels: [], // Start with empty labels
                 datasets: [{
-                    label: 'Demo Data',
-                    data: [65, 59, 80, 81, 56, 55, 40],
+                    label: 'Real-time Wind',
+                    data: [], // Start with empty data
                     fill: false,
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1
                 }]
             },
             options: {
+                animation: false,
                 scales: {
                     y: {
                         beginAtZero: true
@@ -29,6 +30,39 @@
                 }
             }
         });
+
+        setInterval(function() {
+            // Replace 'https://example.com/data' with your actual data endpoint
+            //fetch('wind/data_since?duration=600.0')
+            fetch('wind/last_data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    // Assuming 'data' is an object that has a 'value' property
+                    const newValue = data.vel;
+                    const newLabel = new Date(Math.floor(data.ts* 1000)).toLocaleTimeString();
+                    console.log("data", data.ts, Math.floor(data.ts* 1000), newLabel);
+
+                    // Update chart data and labels
+                    myChart.data.labels.push(newLabel);
+                    myChart.data.datasets.forEach((dataset) => {
+                        dataset.data.push(newValue);
+                    });
+
+                    // Remove the first label and data point if more than 20 items to avoid squeezing the chart
+                    if (myChart.data.labels.length > 10) {
+                        myChart.data.labels.shift();
+                        myChart.data.datasets.forEach((dataset) => {
+                            dataset.data.shift();
+                        });
+                    }
+
+                    myChart.update();
+                    console.log("update done");
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }, 1000); // Call the server every second
     </script>
 </body>
 </html>
+
