@@ -38,10 +38,6 @@ pub async fn run_server(
     mut shutdown_rx: watch::Receiver<()>,
 ) {
     let with_context = warp::any().map(move || context.clone());
-    let root = warp::get()
-        .and(warp::path::end())
-        .and(with_context.clone())
-        .and_then(query_last_data);
 
     let last_data = warp::get()
         .and(warp::path("wind"))
@@ -57,9 +53,11 @@ pub async fn run_server(
         .and(with_context.clone())
         .and_then(query_data_since);
 
-    let routes = root
-        .or(last_data)
+    let static_dir = warp::fs::dir("public");
+
+    let routes = last_data
         .or(data_since)
+        .or(static_dir)
         .with(warp::cors().allow_any_origin());
 
     println!("Starting server on {:?}", &addr);
