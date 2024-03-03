@@ -10,7 +10,7 @@ use anyhow::Result;
 use rppal::gpio::{Gpio, Trigger};
 use tokio::time::sleep;
 
-use crate::db::{Measurement, DB};
+use crate::db::{secs_f64_since_epoch, Measurement, DB};
 
 #[derive(Debug)]
 pub struct Davis {
@@ -47,8 +47,41 @@ impl Davis {
         self.db.last_data().await
     }
 
-    pub async fn data_since(&self, t: Duration) -> Result<Vec<Measurement>> {
+    pub async fn all_data_since(&self, t: Duration) -> Result<Vec<Measurement>> {
         self.db.data_since(t).await
+    }
+
+    pub async fn aggregated_data_since(
+        &self,
+        t: Duration,
+        interval: Duration,
+    ) -> Result<Vec<Measurement>> {
+        let measures = self.db.data_since(t).await?;
+        if measures.is_empty() {
+            return Err(anyhow::anyhow!("No data returned"));
+        }
+        let mut agg: Vec<Vec<Measurement>> = vec![vec![]];
+        let mut idx = 0;
+        let interval = interval.as_secs_f64();
+        let mut now = secs_f64_since_epoch();
+        for m in measures.iter().rev() {
+            if m.ts > now - interval {
+                agg[idx].push((*m).clone());
+            } else {
+                now -= interval;
+                idx += 1;
+                agg.push(vec![(*m).clone()]);
+            }
+        }
+        Ok(agg
+            .iter()
+            .map(|v| Measurement {
+                ts: v[0].ts,
+                vel: v.iter().map(|m| m.vel).sum::<f64>() / v.len() as f64,
+                direction: v.iter().map(|m| m.direction).sum::<u16>() / v.len() as u16,
+            })
+            .rev()
+            .collect())
     }
 }
 

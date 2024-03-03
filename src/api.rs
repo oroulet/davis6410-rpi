@@ -8,8 +8,9 @@ use warp::Filter;
 use crate::davis::Davis;
 
 #[derive(Debug, Deserialize)]
-struct MyDuration {
+struct Args {
     duration: f64,
+    interval: f64,
 }
 
 async fn query_last_data(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
@@ -20,11 +21,14 @@ async fn query_last_data(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::R
 }
 
 async fn query_data_since(
-    query: MyDuration,
+    query: Args,
     sensor: Arc<Davis>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     match sensor
-        .data_since(Duration::from_secs_f64(query.duration))
+        .aggregated_data_since(
+            Duration::from_secs_f64(query.duration),
+            Duration::from_secs_f64(query.interval),
+        )
         .await
     {
         Ok(measurements) => Ok(warp::reply::json(&measurements)),
@@ -49,7 +53,7 @@ pub async fn run_server(
     let data_since = warp::get()
         .and(warp::path("wind"))
         .and(warp::path("data_since"))
-        .and(warp::query::<MyDuration>())
+        .and(warp::query::<Args>())
         .and(with_context.clone())
         .and_then(query_data_since);
 

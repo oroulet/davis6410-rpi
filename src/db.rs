@@ -10,11 +10,20 @@ pub struct DB {
     pool: SqlitePool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Measurement {
     pub ts: f64,
     pub vel: f64,
     pub direction: u16,
+}
+
+pub fn secs_f64_since_epoch() -> f64 {
+    duration_since_epoch().as_secs_f64()
+}
+
+pub fn duration_since_epoch() -> Duration {
+    //we know we are not at epoch so this will never fail
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
 }
 
 impl DB {
@@ -56,7 +65,7 @@ impl DB {
     }
 
     pub async fn insert_measurement(&self, vel: f64, direction: u16) -> Result<()> {
-        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?;
+        let ts = duration_since_epoch();
         self.insert_measurement_at_t(ts, vel, direction).await
     }
 
@@ -79,8 +88,8 @@ impl DB {
     }
 
     pub async fn data_since(&self, duration: Duration) -> Result<Vec<Measurement>> {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
-        let threshold = now.as_secs_f64() - duration.as_secs_f64();
+        let now = secs_f64_since_epoch();
+        let threshold = now - duration.as_secs_f64();
         let res = sqlx::query!(
             "SELECT ts, vel, direction FROM wind WHERE ts > ?1",
             threshold
@@ -133,7 +142,7 @@ mod tests {
     async fn test_db() -> Result<()> {
         let db = DB::connect("./test_db1.sqlite".to_string()).await?;
         db.create_tables(true).await?;
-        let ts = SystemTime::now().duration_since(UNIX_EPOCH)? - Duration::from_secs(10);
+        let ts = duration_since_epoch() - Duration::from_secs(10);
         db.insert_measurement_at_t(ts, 50000.0, 2).await?;
         for i in 1..10 {
             db.insert_measurement(i as f64, 2).await?;
