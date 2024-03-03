@@ -44,6 +44,15 @@ impl DB {
         Ok(db)
     }
 
+    pub async fn clean(&self) -> Result<()> {
+        let now = secs_f64_since_epoch();
+        let one_month = now - 30.0 * 24.0 * 60.0 * 60.0;
+        sqlx::query!("DELETE FROM wind WHERE ts < ?1", one_month)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn create_tables(&self, force_delete: bool) -> Result<()> {
         if force_delete {
             tracing::warn!("Force deleting tables");
