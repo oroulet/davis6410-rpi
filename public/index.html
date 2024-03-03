@@ -33,14 +33,13 @@
                 }
             }
         });
-
-        setInterval(function() {
+ 
+        function update_charts() {
             // Replace 'https://example.com/data' with your actual data endpoint
             //fetch('wind/data_since?duration=600.0')
             fetch('wind/last_data')
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
                     // Assuming 'data' is an object that has a 'value' property
                     const newValue = data.vel.toFixed(1);
                     wind_text.innerText = `Current Wind: ${newValue} m/s`;
@@ -65,7 +64,37 @@
                     console.log("update done");
                 })
                 .catch(error => console.error('Error fetching data:', error));
-        }, 1000); // Call the server every second
+
+            setTimeout(update_charts, 1000);
+        }
+
+
+        function fill_then_update_charts() {
+            fetch('wind/data_since?duration=600.0&interval=60.0')
+                .then(response => response.json())
+                .then(datalist => {
+                    datalist.forEach((data) => {
+
+                        // Assuming 'data' is an object that has a 'value' property
+                        const newValue = data.vel.toFixed(1);
+                        const newLabel = new Date(Math.floor(data.ts* 1000)).toLocaleTimeString();
+    
+                        // Update chart data and labels
+                        realtimeChart.data.labels.push(newLabel);
+                        realtimeChart.data.datasets.forEach((dataset) => {
+                            dataset.data.push(newValue);
+                        });
+
+
+                    });
+                })
+                .catch(error => console.error('Error fetching data:', error));
+            realtimeChart.update();
+            setTimeout(update_charts, 1000);
+        }
+
+        fill_then_update_charts();
+
     </script>
 </body>
 </html>
