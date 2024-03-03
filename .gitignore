@@ -2,3 +2,5 @@ target
 *.sqlite
 *shm
 *wal
+node_modules
+*.json

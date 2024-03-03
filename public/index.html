@@ -19,8 +19,6 @@
             {
               label: "Real-time Wind",
               data: [], // Start with empty data
-              fill: false,
-              borderColor: "rgb(75, 192, 192)",
               tension: 0.1,
             },
           ],
@@ -44,8 +42,6 @@
             {
               label: "Wind",
               data: [], // Start with empty data
-              fill: false,
-              borderColor: "rgb(75, 192, 192)",
               tension: 0.1,
             },
           ],
@@ -59,7 +55,6 @@
           },
         },
       });
-
 
       function fill_charts(chart, data) {
         const newValue = data.vel.toFixed(1);
@@ -84,7 +79,7 @@
           chart.data.datasets.forEach((dataset) => {
             dataset.data.shift();
           });
-            chart.update();
+          chart.update();
         }
       }
 
@@ -106,11 +101,11 @@
       }
 
       function fill_then_update_charts(chart, duration, interval, period) {
-          fetch(`wind/data_since?duration=${duration}&interval=${interval}`)
+        fetch(`wind/data_since?duration=${duration}&interval=${interval}`)
           .then((response) => response.json())
           .then((datalist) => {
             datalist.forEach((data) => {
-                //console.log("FILL", data);
+              //console.log("FILL", data);
               fill_charts(chart, data);
             });
           })
