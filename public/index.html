@@ -108,40 +108,40 @@
         }
       }
 
-      function update_charts(chart, duration, interval, period) {
-        fetch("wind/last_data")
+      function update_charts(chart, duration, interval, nb_bars) {
+        fetch(`wind/data_since?duration=${interval}&interval=${interval}`)
           .then((response) => response.json())
-          .then((data) => {
-            fill_charts(chart, data);
+          .then((datalist) => {
+            datalist.forEach((data) => {
+              fill_charts(chart, data);
+            });
           })
           .catch((error) => console.error("Error fetching data:", error));
 
-        remove_old_data(chart, 10);
+        remove_old_data(chart, nb_bars);
 
         setTimeout(function () {
-          update_charts(chart, duration, interval, period);
+          update_charts(chart, duration, interval, nb_bars);
         }, period);
       }
 
-      function fill_then_update_charts(chart, duration, interval, period) {
+      function fill_then_update_charts(chart, duration, interval, nb_bars) {
         fetch(`wind/data_since?duration=${duration}&interval=${interval}`)
           .then((response) => response.json())
           .then((datalist) => {
             datalist.forEach((data) => {
-              //console.log("FILL", data);
               fill_charts(chart, data);
             });
           })
           .catch((error) => console.error("Error fetching data:", error));
         setTimeout(function () {
-          update_charts(chart, duration, interval, period);
-        }, period);
+          update_charts(chart, duration, interval, period, nb_bars);
+        }, interval * 1000);
       }
 
-      fill_then_update_charts(realtimeChart, 600.0, 60.0, 5000);
-      fill_then_update_charts(hourlyChart, 3600.0, 600.0, 600000);
-      fill_then_update_charts(dailyChart, 36000.0, 6000.0, 6000000);
-      //fill_then_update_charts(hourlyChart, 600.0, 60.0, 1000);
+      fill_then_update_charts(realtimeChart, 600.0, 30.0, 30);
+      fill_then_update_charts(hourlyChart, 3600.0, 600.0, 30);
+      fill_then_update_charts(dailyChart, 36000.0, 6000.0, 30);
     </script>
   </body>
 </html>
