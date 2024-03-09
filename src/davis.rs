@@ -130,6 +130,7 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
 pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) {
     let mut last_call = Instant::now();
     loop {
+        sleep(Duration::from_secs_f64(period)).await;
         let now = Instant::now();
         let elapsed = now - last_call;
         last_call = now;
@@ -142,7 +143,6 @@ pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) 
         if let Err(err) = db.insert_measurement(vel, 0).await {
             tracing::error!("Failed to write measurement in DB!, {:?}", err)
         }
-        sleep(Duration::from_secs_f64(period)).await;
     }
 }
 

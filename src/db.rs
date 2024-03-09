@@ -85,6 +85,7 @@ impl DB {
         direction: u16,
     ) -> Result<()> {
         let ts = ts_since_epoch.as_secs_f64();
+        tracing::info!("DB: Inserting: ts: {:?}, vel: {:?}m/s", &ts, &vel);
         sqlx::query!(
             "INSERT INTO wind (ts, vel, direction) VALUES (?1, ?2, ?3)",
             ts,
