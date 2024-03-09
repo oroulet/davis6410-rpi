@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use clap::{arg, Command};
-use rust_wind::{api::WindServer, davis::Davis};
+use davis_rpi::{api::WindServer, davis::Davis};
 use tokio::signal;
 
 #[tokio::main]

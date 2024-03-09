@@ -1,5 +1,5 @@
 [package]
-name = "rust-wind"
+name = "davis-rpi"
 version = "0.1.0"
 edition = "2021"
 
