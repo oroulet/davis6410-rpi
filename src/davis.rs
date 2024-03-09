@@ -24,7 +24,7 @@ impl Davis {
     pub async fn connect(db_path: String, simulation: bool) -> Result<Self> {
         tracing::info!("start connect to Davis sensor");
         let db = Arc::new(DB::connect(db_path).await?);
-        let period = 5.0;
+        let period = 30.0;
         let counter = Arc::new(AtomicU64::new(0));
         let counter_ptr = counter.clone();
         let counting_handle = if simulation {
