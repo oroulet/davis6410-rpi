@@ -28,14 +28,14 @@ pub fn duration_since_epoch() -> Duration {
 
 impl DB {
     pub async fn connect(path: String) -> Result<Self> {
-        if !Sqlite::database_exists(&path).await.unwrap_or(false) {
+        if Sqlite::database_exists(&path).await.unwrap_or(false) {
+            tracing::info!("Database already exists");
+        } else {
             tracing::warn!("Creating database {}", &path);
             match Sqlite::create_database(&path).await {
-                Ok(_) => println!("Create db success"),
-                Err(error) => panic!("error: {}", error),
+                Ok(()) => println!("Create db success"),
+                Err(error) => panic!("error: {error}"),
             }
-        } else {
-            tracing::info!("Database already exists");
         }
 
         let pool = sqlx::SqlitePool::connect(path.as_str()).await?;

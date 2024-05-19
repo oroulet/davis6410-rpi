@@ -69,7 +69,7 @@ pub async fn run_server(
         shutdown_rx.changed().await.ok();
         tracing::info!("closing robot rest interface");
     });
-    server.await
+    server.await;
 }
 
 pub struct WindServer {
@@ -78,7 +78,7 @@ pub struct WindServer {
 }
 
 impl WindServer {
-    pub async fn run(context: Arc<Davis>, addr: SocketAddr) -> Self {
+    pub fn run(context: Arc<Davis>, addr: SocketAddr) -> Self {
         let (shutdown_sender, shutdown_rx) = watch::channel(());
         let handle =
             tokio::task::spawn(async move { run_server(context, addr, shutdown_rx).await });

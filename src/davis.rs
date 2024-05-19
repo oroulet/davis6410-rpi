@@ -15,7 +15,7 @@ use crate::db::{secs_f64_since_epoch, Measurement, DB};
 #[derive(Debug)]
 pub struct Davis {
     counting_handle: std::thread::JoinHandle<()>,
-    update_handle: tokio::task::JoinHandle<()>,
+    db_update_handle: tokio::task::JoinHandle<()>,
     db: Arc<DB>,
 }
 
@@ -34,11 +34,11 @@ impl Davis {
         };
         // Start a task storing wind speed at every period into a DB
         let db_clone = db.clone();
-        let update_handle =
+        let db_update_handle =
             tokio::task::spawn(async move { fetch_data_loop(period, counter, db_clone).await });
         Ok(Davis {
             counting_handle,
-            update_handle,
+            db_update_handle,
             db,
         })
     }
@@ -67,7 +67,7 @@ impl Davis {
         for m in measures.iter().rev() {
             if m.ts > now - interval {
                 if agg.len() <= idx {
-                    agg.push(vec![])
+                    agg.push(vec![]);
                 }
                 agg[idx].push((*m).clone());
             } else {
@@ -95,7 +95,7 @@ pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) {
     loop {
         counter.fetch_add(1, Ordering::SeqCst);
         std::thread::sleep(Duration::from_secs_f64(sleep_time));
-        let duration_since_start = (Instant::now() - start_ts).as_secs_f64();
+        let duration_since_start = (start_ts.elapsed()).as_secs_f64();
         if duration_since_start > 2.5 * period {
             sleep_time = period / 10.0;
             start_ts = Instant::now();
@@ -122,7 +122,8 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
         match wind_io.poll_interrupt(true, Some(Duration::from_secs(10))) {
             Err(_e) => (),
             Ok(_info) => {
-                if Instant::now() - ts < Duration::from_secs_f64(0.002) {
+                // first filter out strange very fast bursts
+                if ts.elapsed() < Duration::from_secs_f64(0.002) {
                     continue;
                 };
                 ts = Instant::now();
@@ -144,7 +145,7 @@ pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) 
         let vel = wind_speed_mph * 0.44704;
         tracing::info!("Read vel: {:?}", &vel);
         if let Err(err) = db.insert_measurement(vel, 0).await {
-            tracing::error!("Failed to write measurement in DB!, {:?}", err)
+            tracing::error!("Failed to write measurement in DB!, {:?}", err);
         }
     }
 }
