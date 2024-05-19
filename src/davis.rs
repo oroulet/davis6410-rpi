@@ -16,7 +16,6 @@ use crate::db::{secs_f64_since_epoch, Measurement, DB};
 pub struct Davis {
     counting_handle: std::thread::JoinHandle<()>,
     update_handle: tokio::task::JoinHandle<()>,
-    period: f64,
     db: Arc<DB>,
 }
 
@@ -24,21 +23,22 @@ impl Davis {
     pub async fn connect(db_path: String, simulation: bool) -> Result<Self> {
         tracing::info!("start connect to Davis sensor");
         let db = Arc::new(DB::connect(db_path).await?);
-        let period = 30.0;
+        let period = 60.0;
         let counter = Arc::new(AtomicU64::new(0));
         let counter_ptr = counter.clone();
+        // Start a task incrementing a counter at every pulse from sensor
         let counting_handle = if simulation {
             std::thread::spawn(move || fake_counting_sync_loop(counter_ptr, period))
         } else {
             std::thread::spawn(|| counting_sync_loop(counter_ptr))
         };
+        // Start a task storing wind speed at every period into a DB
         let db_clone = db.clone();
         let update_handle =
             tokio::task::spawn(async move { fetch_data_loop(period, counter, db_clone).await });
         Ok(Davis {
             counting_handle,
             update_handle,
-            period,
             db,
         })
     }
@@ -85,6 +85,7 @@ impl Davis {
     }
 }
 
+/// That method simply increment a counter at almost random pace to simulate data from sensor
 pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) {
     let mut sleep_time = period / 10.0;
     let mut start_ts = Instant::now();
@@ -101,6 +102,7 @@ pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) {
     }
 }
 
+/// That method simply increment a counter at every pulse from sensor
 pub fn counting_sync_loop(counter: Arc<AtomicU64>) {
     if let Err(err) = counting_sync_loop_inner(counter) {
         tracing::error!("HW loop has died, {:?} ", err);
@@ -127,6 +129,7 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
     }
 }
 
+/// at every period, convert counter value to wind speed using formula from manufacturer
 pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) {
     let mut last_call = Instant::now();
     loop {
