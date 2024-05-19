@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::Result;
 use rppal::gpio::{Gpio, Trigger};
-use tokio::time::sleep;
+use tokio::time::interval;
 
 use crate::db::{secs_f64_since_epoch, Measurement, DB};
 
@@ -60,12 +60,15 @@ impl Davis {
         if measures.is_empty() {
             return Err(anyhow::anyhow!("No data returned"));
         }
-        let mut agg: Vec<Vec<Measurement>> = vec![vec![]];
+        let mut agg: Vec<Vec<Measurement>> = vec![];
         let mut idx = 0;
         let interval = interval.as_secs_f64();
         let mut now = secs_f64_since_epoch();
         for m in measures.iter().rev() {
             if m.ts > now - interval {
+                if agg.len() <= idx {
+                    agg.push(vec![])
+                }
                 agg[idx].push((*m).clone());
             } else {
                 now -= interval;
@@ -131,15 +134,12 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
 
 /// at every period, convert counter value to wind speed using formula from manufacturer
 pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) {
-    let mut last_call = Instant::now();
+    let mut interval = interval(Duration::from_secs_f64(period));
+    interval.tick().await; // we skip first tick to get some data from sensor first
     loop {
-        sleep(Duration::from_secs_f64(period)).await;
-        let now = Instant::now();
-        let elapsed = now - last_call;
-        last_call = now;
+        interval.tick().await;
         let count = counter.swap(0, Ordering::SeqCst);
-        let wind_speed_mph = count as f64 * (2.25 / elapsed.as_secs_f64());
-
+        let wind_speed_mph = count as f64 * (2.25 / period);
         tracing::debug!("Number of IO edges: {:?}", &count);
         let vel = wind_speed_mph * 0.44704;
         tracing::info!("Read vel: {:?}", &vel);
@@ -155,6 +155,7 @@ mod tests {
     use std::time::SystemTime;
 
     use anyhow::Result;
+    use tokio::time::sleep;
     use tracing_test::traced_test;
 
     use super::*;
