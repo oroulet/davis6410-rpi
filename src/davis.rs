@@ -43,6 +43,10 @@ impl Davis {
         })
     }
 
+    pub async fn current_wind(&self) -> Result<Measurement> {
+        self.db.current_wind().await
+    }
+
     pub async fn last_data(&self) -> Result<Measurement> {
         self.db.last_data().await
     }
