@@ -23,7 +23,7 @@ impl Davis {
     pub async fn connect(db_path: String, simulation: bool) -> Result<Self> {
         tracing::info!("start connect to Davis sensor");
         let db = Arc::new(DB::connect(db_path).await?);
-        let period = 60.0;
+        let period = 30.0;
         let counter = Arc::new(AtomicU64::new(0));
         let counter_ptr = counter.clone();
         // Start a task incrementing a counter at every pulse from sensor
@@ -119,19 +119,18 @@ pub fn counting_sync_loop(counter: Arc<AtomicU64>) {
 
 pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
     let gpio = Gpio::new()?;
-    let mut wind_io = gpio.get(5)?.into_input_pullup();
-    wind_io.set_interrupt(Trigger::RisingEdge)?;
+    let mut wind_io = gpio.get(5)?.into_input();
+    wind_io.set_interrupt(Trigger::FallingEdge)?;
     let mut ts = Instant::now();
     loop {
-        match wind_io.poll_interrupt(true, Some(Duration::from_secs(10))) {
+        match wind_io.poll_interrupt(true, None) {
             Err(_e) => (),
             Ok(_info) => {
-                // first filter out strange very fast bursts
-                if ts.elapsed() < Duration::from_secs_f64(0.002) {
-                    continue;
+                // debounce stuff
+                if ts.elapsed() > Duration::from_millis(18) {
+                    ts = Instant::now();
+                    counter.fetch_add(1, Ordering::SeqCst);
                 };
-                ts = Instant::now();
-                counter.fetch_add(1, Ordering::SeqCst);
             }
         }
     }
