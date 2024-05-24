@@ -97,10 +97,12 @@ impl DB {
         Ok(())
     }
     pub async fn current_wind(&self) -> Result<Measurement> {
-        let d = self.data_since(Duration::from_secs(60)).await?;
-        match d.last() {
-            Some(m) => Ok(m.clone()),
-            None => Err(anyhow::anyhow!("No data avaialble in db yet")),
+        let m = self.last_data().await?;
+        let now = secs_f64_since_epoch();
+        if now - m.ts < 60.0 {
+            Ok(m)
+        } else {
+            Err(anyhow::anyhow!("No data avaialble in db yet"))
         }
     }
 
