@@ -23,7 +23,8 @@ impl Davis {
     pub async fn connect(db_path: String, simulation: bool) -> Result<Self> {
         tracing::info!("start connect to Davis sensor");
         let db = Arc::new(DB::connect(db_path).await?);
-        let period = 30.0;
+        // using a short period to remove some noise
+        let period = Duration::from_secs_f64(2.25);
         let counter = Arc::new(AtomicU64::new(0));
         let counter_ptr = counter.clone();
         // Start a task incrementing a counter at every pulse from sensor
@@ -93,18 +94,18 @@ impl Davis {
 }
 
 /// That method simply increment a counter at almost random pace to simulate data from sensor
-pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: f64) {
-    let mut sleep_time = period / 10.0;
+pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: Duration) {
+    let mut sleep_time = period / 10;
     let mut start_ts = Instant::now();
     loop {
         counter.fetch_add(1, Ordering::SeqCst);
-        std::thread::sleep(Duration::from_secs_f64(sleep_time));
-        let duration_since_start = (start_ts.elapsed()).as_secs_f64();
-        if duration_since_start > 2.5 * period {
-            sleep_time = period / 10.0;
+        std::thread::sleep(sleep_time);
+        let duration_since_start = start_ts.elapsed();
+        if duration_since_start > 3 * period {
+            sleep_time = period / 10;
             start_ts = Instant::now();
-        } else if duration_since_start > period * 1.5 {
-            sleep_time = period / 100.0;
+        } else if duration_since_start > period * 2 {
+            sleep_time = period / 100;
         }
     }
 }
@@ -137,15 +138,19 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
 }
 
 /// at every period, convert counter value to wind speed using formula from manufacturer
-pub async fn fetch_data_loop(period: f64, counter: Arc<AtomicU64>, db: Arc<DB>) {
-    let mut interval = interval(Duration::from_secs_f64(period));
+pub async fn fetch_data_loop(period: Duration, counter: Arc<AtomicU64>, db: Arc<DB>) {
+    let mut interval = interval(period);
     interval.tick().await; // we skip first tick to get some data from sensor first
     loop {
         interval.tick().await;
         let count = counter.swap(0, Ordering::SeqCst);
-        let wind_speed_mph = count as f64 * (2.25 / period);
+        let wind_speed_mph = count as f64 * (2.25 / period.as_secs_f64());
         tracing::debug!("Number of IO edges: {:?}", &count);
         let vel = wind_speed_mph * 0.44704;
+        if vel > 30.0 {
+            // filter out too high values, something is wrong
+            continue;
+        }
         tracing::info!("Read vel: {:?}", &vel);
         if let Err(err) = db.insert_measurement(vel, 0).await {
             tracing::error!("Failed to write measurement in DB!, {:?}", err);
