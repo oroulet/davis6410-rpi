@@ -120,7 +120,7 @@ pub fn counting_sync_loop(counter: Arc<AtomicU64>) {
 
 pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
     let gpio = Gpio::new()?;
-    let mut wind_io = gpio.get(5)?.into_input();
+    let mut wind_io = gpio.get(5)?.into_input_pullup();
     wind_io.set_interrupt(Trigger::FallingEdge)?;
     let mut ts = Instant::now();
     loop {

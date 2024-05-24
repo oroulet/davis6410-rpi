@@ -98,10 +98,10 @@ impl DB {
     }
     pub async fn current_wind(&self) -> Result<Measurement> {
         let d = self.data_since(Duration::from_secs(60)).await?;
-        if d.is_empty() {
-            return Err(anyhow::anyhow!("No data avaialble in db yet"));
+        match d.last() {
+            Some(m) => Ok(m.clone()),
+            None => Err(anyhow::anyhow!("No data avaialble in db yet")),
         }
-        Ok(d[0].clone())
     }
 
     pub async fn data_since(&self, duration: Duration) -> Result<Vec<Measurement>> {
