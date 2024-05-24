@@ -143,7 +143,10 @@
           .then((response) => response.json())
           .then((data) => {
             const newValue = data.vel.toFixed(1);
-            wind_text.innerText = `Current Wind: ${newValue} m/s`;
+            const dt = new Date(
+                Math.floor(data.ts * 1000),
+            ).toLocaleTimeString();
+              wind_text.innerText = `Current Wind: ${newValue}  m/s _____       ${dt}`;
         	console.log("realtime wind data", data);
           })
           .catch((error) => console.error("Error fetching data:", error));
