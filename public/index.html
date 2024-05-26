@@ -7,6 +7,7 @@
   <body>
     <h1 id="windText">Current Wind: Null</h1>
     <canvas id="realtimeChart" width="100vh" height="40vh"></canvas>
+    <canvas id="minuteChart" width="100vh" height="40vh"></canvas>
     <canvas id="hourlyChart" width="100vh" height="40vh"></canvas>
     <canvas id="dailyChart" width="100vh" height="40vh"></canvas>
     <script>
@@ -33,6 +34,31 @@
           },
         },
       });
+
+      var ctx = document.getElementById("minuteChart").getContext("2d");
+      var minuteChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: [], // Start with empty labels
+          datasets: [
+            {
+              label: "Per minute Wind",
+              data: [], // Start with empty data
+              tension: 0.1,
+            },
+          ],
+        },
+        options: {
+          animation: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+
 
       var ctx2 = document.getElementById("hourlyChart").getContext("2d");
       var hourlyChart = new Chart(ctx2, {
@@ -157,7 +183,8 @@
       }
 
 
-      fill_then_update_charts(realtimeChart, 600.0, 60.0);
+      fill_then_update_charts(realtimeChart, 100.0, 2.25);
+      fill_then_update_charts(minuteChart, 600.0, 60.0);
       fill_then_update_charts(hourlyChart, 7200.0, 600.0);
       fill_then_update_charts(dailyChart, 86400.0, 3600.0);
       update_realtime_chart(5);
