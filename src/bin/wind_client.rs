@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 
 use clap::{Parser, Subcommand};
+use davis_rpi::db::Measurement;
 
 #[derive(Parser, Debug)]
 #[command(name = "Wind server client")]
@@ -20,6 +19,7 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Current,
+    Oldest,
     LastEvents { count: usize },
 }
 
@@ -29,6 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match &args.command {
         Commands::Current => query("localhost".into(), "current".into(), None).await?,
+        Commands::Oldest => query("localhost".into(), "oldest_data".into(), None).await?,
         Commands::LastEvents { count } => {
             query(
                 "localhost".into(),
@@ -42,12 +43,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn query(host: String, cmd: String, args: Option<Vec<String>>) -> Result<()> {
-    let resp = reqwest::get(format!("http://{host}:8080/wind/{cmd}"))
+async fn query(host: String, cmd: String, _args: Option<Vec<String>>) -> Result<()> {
+    let m = reqwest::get(format!("http://{host}:8080/wind/{cmd}"))
         .await?
-        //.json::<Mesurement>
-        .text()
+        .json::<Measurement>()
         .await?;
-    println!("{resp:#?}");
+    println!("{}", m.pretty_str());
     Ok(())
 }

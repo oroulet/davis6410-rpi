@@ -20,6 +20,13 @@ async fn query_last_data(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::R
     }
 }
 
+async fn query_oldest_data(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
+    match sensor.oldest_data().await {
+        Ok(measurement) => Ok(warp::reply::json(&measurement)),
+        _ => Err(warp::reject()),
+    }
+}
+
 async fn query_current(sensor: Arc<Davis>) -> Result<impl warp::Reply, warp::Rejection> {
     match sensor.current_wind().await {
         Ok(measurement) => Ok(warp::reply::json(&measurement)),
@@ -57,6 +64,13 @@ pub async fn run_server(
         .and(with_context.clone())
         .and_then(query_current);
 
+    let oldest_data = warp::get()
+        .and(warp::path("wind"))
+        .and(warp::path("oldest_data"))
+        .and(warp::path::end())
+        .and(with_context.clone())
+        .and_then(query_oldest_data);
+
     let last_data = warp::get()
         .and(warp::path("wind"))
         .and(warp::path("last_data"))
@@ -76,6 +90,7 @@ pub async fn run_server(
     let routes = last_data
         .or(data_since)
         .or(current)
+        .or(oldest_data)
         .or(static_dir)
         .with(warp::cors().allow_any_origin());
 

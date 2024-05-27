@@ -52,6 +52,10 @@ impl Davis {
         self.db.last_data().await
     }
 
+    pub async fn oldest_data(&self) -> Result<Measurement> {
+        self.db.oldest_data().await
+    }
+
     pub async fn all_data_since(&self, t: Duration) -> Result<Vec<Measurement>> {
         self.db.data_since(t).await
     }

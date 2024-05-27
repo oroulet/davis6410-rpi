@@ -1,7 +1,8 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
-use serde::Serialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::{Sqlite, SqlitePool};
 
@@ -10,11 +11,21 @@ pub struct DB {
     pool: SqlitePool,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Measurement {
     pub ts: f64,
     pub vel: f64,
     pub direction: u16,
+}
+
+impl Measurement {
+    pub fn pretty_str(&self) -> String {
+        let system_time = epoch_to_system_time(self.ts);
+        let datetime: DateTime<Utc> = system_time.into();
+
+        let iso_string = datetime.to_rfc3339();
+        format!("Measuremnt(ts: {}, vel: {}m/s)", iso_string, self.vel)
+    }
 }
 
 pub fn secs_f64_since_epoch() -> f64 {
@@ -24,6 +35,16 @@ pub fn secs_f64_since_epoch() -> f64 {
 pub fn duration_since_epoch() -> Duration {
     //we know we are not at epoch so this will never fail
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
+}
+
+pub fn epoch_to_system_time(epoch_seconds: f64) -> SystemTime {
+    let whole_seconds = epoch_seconds.trunc() as u64;
+    let fractional_part = epoch_seconds.fract();
+    let nanos = (fractional_part * 1_000_000_000.0) as u32;
+
+    let duration = Duration::new(whole_seconds, nanos);
+
+    UNIX_EPOCH + duration
 }
 
 impl DB {
@@ -137,6 +158,21 @@ impl DB {
             .fetch_one(&self.pool)
             .await?;
         tracing::info!("Sending last data: {:?}", &row);
+        Ok(Measurement {
+            ts: row.ts.ok_or_else(|| anyhow::anyhow!("not found"))?,
+            vel: row.vel.ok_or_else(|| anyhow::anyhow!("Not found"))?,
+            direction: row
+                .direction
+                .ok_or_else(|| anyhow::anyhow!("Not found"))?
+                .try_into()?,
+        })
+    }
+
+    pub async fn oldest_data(&self) -> Result<Measurement> {
+        let row = sqlx::query!("SELECT ts, vel, direction  FROM wind ORDER BY ts ASC LIMIT 1",)
+            .fetch_one(&self.pool)
+            .await?;
+        tracing::info!("Sending oldest data: {:?}", &row);
         Ok(Measurement {
             ts: row.ts.ok_or_else(|| anyhow::anyhow!("not found"))?,
             vel: row.vel.ok_or_else(|| anyhow::anyhow!("Not found"))?,
