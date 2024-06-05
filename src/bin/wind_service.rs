@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     );
 
     let davis = Arc::new(Davis::connect(String::from("./db.sqlite"), *emulation).await?);
-    let http_server = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?);
+    let http_server_axum = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?).await?;
 
     match signal::ctrl_c().await {
         Ok(()) => {
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
             tracing::warn!("Unable to listen for shutdown signal: {err}");
         }
     }
-    http_server.stop().await?;
+    http_server_axum.stop().await?;
 
     Ok(())
 }
