@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "last_events".into(),
                 Some(vec![format!("{count}")]),
             )
-            .await?
+            .await?;
         }
     };
 
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn query(host: String, cmd: String, _args: Option<Vec<String>>) -> Result<()> {
-    let m = reqwest::get(format!("http://{host}:8080/wind/{cmd}"))
+    let m = reqwest::get(format!("http://{host}:8080/api/{cmd}"))
         .await?
         .json::<Measurement>()
         .await?;

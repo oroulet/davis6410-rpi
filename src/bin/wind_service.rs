@@ -29,10 +29,7 @@ async fn main() -> Result<()> {
     let public_path = matches.get_one::<String>("public_path").unwrap();
     let address = matches.get_one::<String>("address").unwrap();
 
-    println!(
-        "Starting Wind Sensor Service with emulation {:?}",
-        emulation
-    );
+    println!("Starting Wind Sensor Service with emulation {emulation}");
 
     let davis = Arc::new(Davis::connect(db_path.clone(), *emulation).await?);
     let http_server_axum = WindServer::run(davis.clone(), address.parse()?, public_path).await?;

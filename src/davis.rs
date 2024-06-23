@@ -123,13 +123,13 @@ pub fn fake_counting_sync_loop(counter: Arc<AtomicU64>, period: Duration) {
 
 /// That method simply increment a counter at every pulse from sensor
 pub fn counting_sync_loop(counter: Arc<AtomicU64>) {
-    if let Err(err) = counting_sync_loop_inner(counter) {
+    if let Err(err) = counting_sync_loop_inner(&counter) {
         tracing::error!("HW loop has died, {:?} ", err);
         panic!("If we fail here, no need to continue");
     }
 }
 
-pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
+pub fn counting_sync_loop_inner(counter: &Arc<AtomicU64>) -> Result<()> {
     let gpio = Gpio::new()?;
     let mut wind_io = gpio.get(5)?.into_input_pullup();
     wind_io.set_interrupt(Trigger::FallingEdge)?;
