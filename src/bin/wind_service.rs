@@ -15,15 +15,19 @@ async fn main() -> Result<()> {
         .version("0.1.0")
         .about("start wind sensor service")
         .arg(arg!(--"emulation"))
+        .arg(
+            arg!(--"db_path" <DATABASE> "Sets a custom database path").default_value("./db.sqlite"),
+        )
         .get_matches();
     let emulation = matches.get_one::<bool>("emulation").unwrap();
+    let db_path = matches.get_one::<String>("db_path").unwrap();
 
     println!(
         "Starting Wind Sensor Service with emulation {:?}",
         emulation
     );
 
-    let davis = Arc::new(Davis::connect(String::from("./db.sqlite"), *emulation).await?);
+    let davis = Arc::new(Davis::connect(db_path.clone(), *emulation).await?);
     let http_server_axum = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?).await?;
 
     match signal::ctrl_c().await {

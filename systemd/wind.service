@@ -1,0 +1,11 @@
+[Unit]
+Description=Davis wind
+After=network.target
+
+[Service]
+KillSignal=SIGINT
+ExecStart=/home/olivier/.cargo/bin/wind_service --db_path=/opt/db.sqlite
+Type=notify
+
+[Install]
+WantedBy=default.target
