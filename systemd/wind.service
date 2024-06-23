@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 KillSignal=SIGINT
-ExecStart=/home/olivier/.cargo/bin/wind_service --db_path=/opt/db.sqlite
+ExecStart=/home/olivier/.cargo/bin/wind_service --db_path=/opt/db.sqlite --public_path=/opt/public --address=0.0.0.0:80
 
 [Install]
 WantedBy=default.target
