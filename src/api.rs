@@ -68,9 +68,13 @@ pub struct WindServer {
 }
 
 impl WindServer {
-    pub async fn run(context: Arc<Davis>, addr: SocketAddr) -> anyhow::Result<Self> {
+    pub async fn run(
+        context: Arc<Davis>,
+        addr: SocketAddr,
+        public_dir: &String,
+    ) -> anyhow::Result<Self> {
         let router = Router::new()
-            .nest_service("/", ServeDir::new("public"))
+            .nest_service("/", ServeDir::new(public_dir))
             .route("/api/current", get(current))
             .route("/api/oldest_data", get(oldest_data))
             .route("/api/data_since", get(data_since))

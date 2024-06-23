@@ -18,9 +18,16 @@ async fn main() -> Result<()> {
         .arg(
             arg!(--"db_path" <DATABASE> "Sets a custom database path").default_value("./db.sqlite"),
         )
+        .arg(
+            arg!(--"public_path" <DATABASE> "where the web site file is installed")
+                .default_value("./public"),
+        )
+        .arg(arg!(--"address" <DATABASE> "address to serve on").default_value("0.0.0.0:8080"))
         .get_matches();
     let emulation = matches.get_one::<bool>("emulation").unwrap();
     let db_path = matches.get_one::<String>("db_path").unwrap();
+    let public_path = matches.get_one::<String>("public_path").unwrap();
+    let address = matches.get_one::<String>("address").unwrap();
 
     println!(
         "Starting Wind Sensor Service with emulation {:?}",
@@ -28,7 +35,7 @@ async fn main() -> Result<()> {
     );
 
     let davis = Arc::new(Davis::connect(db_path.clone(), *emulation).await?);
-    let http_server_axum = WindServer::run(davis.clone(), "0.0.0.0:8080".parse()?).await?;
+    let http_server_axum = WindServer::run(davis.clone(), address.parse()?, public_path).await?;
 
     match signal::ctrl_c().await {
         Ok(()) => {
