@@ -71,9 +71,9 @@ impl WindServer {
     pub async fn run(context: Arc<Davis>, addr: SocketAddr) -> anyhow::Result<Self> {
         let router = Router::new()
             .nest_service("/", ServeDir::new("public"))
-            .route("/wind/current", get(current))
-            .route("/wind/oldest_data", get(oldest_data))
-            .route("/wind/data_since", get(data_since))
+            .route("/api/current", get(current))
+            .route("/api/oldest_data", get(oldest_data))
+            .route("/api/data_since", get(data_since))
             .with_state(context);
 
         println!("Starting server on {:?}", &addr);

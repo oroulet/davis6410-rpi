@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::Result;
 use rppal::gpio::{Gpio, Trigger};
-use tokio::time::interval;
+use tokio::time::{interval, sleep};
 
 use crate::db::{secs_f64_since_epoch, Measurement, DB};
 
@@ -16,6 +16,7 @@ use crate::db::{secs_f64_since_epoch, Measurement, DB};
 pub struct Davis {
     counting_handle: std::thread::JoinHandle<()>,
     db_update_handle: tokio::task::JoinHandle<()>,
+    cleanup_handle: tokio::task::JoinHandle<()>,
     db: Arc<DB>,
 }
 
@@ -37,9 +38,15 @@ impl Davis {
         let db_clone = db.clone();
         let db_update_handle =
             tokio::task::spawn(async move { fetch_data_loop(period, counter, db_clone).await });
+        // Start a task to remove old data from db so we do not fill up disk
+        let db_clone = db.clone();
+        let cleanup_period = Duration::from_secs(10 * 24 * 60 * 60);
+        let cleanup_handle =
+            tokio::task::spawn(async move { cleanup_loop(db_clone, cleanup_period).await });
         Ok(Davis {
             counting_handle,
             db_update_handle,
+            cleanup_handle,
             db,
         })
     }
@@ -63,7 +70,7 @@ impl Davis {
     pub async fn aggregated_data_since(
         &self,
         t: Duration,
-        interval: Duration,
+        period: Duration,
     ) -> Result<Vec<Measurement>> {
         let measures = self.db.data_since(t).await?;
         if measures.is_empty() {
@@ -71,16 +78,16 @@ impl Davis {
         }
         let mut agg: Vec<Vec<Measurement>> = vec![];
         let mut idx = 0;
-        let interval = interval.as_secs_f64();
+        let period = period.as_secs_f64();
         let mut now = secs_f64_since_epoch();
         for m in measures.iter().rev() {
-            if m.ts > now - interval {
+            if m.ts > now - period {
                 if agg.len() <= idx {
                     agg.push(vec![]);
                 }
                 agg[idx].push((*m).clone());
             } else {
-                now -= interval;
+                now -= period;
                 idx += 1;
                 agg.push(vec![(*m).clone()]);
             }
@@ -138,6 +145,16 @@ pub fn counting_sync_loop_inner(counter: Arc<AtomicU64>) -> Result<()> {
                 };
             }
         }
+    }
+}
+
+pub async fn cleanup_loop(db: Arc<DB>, t: Duration) {
+    loop {
+        match db.clean(t).await {
+            Ok(()) => tracing::warn!("Cleaned up database"),
+            Err(e) => tracing::warn!("Error cleanup up db {}", e),
+        }
+        sleep(t).await;
     }
 }
 

@@ -65,7 +65,7 @@
           labels: [], // Start with empty labels
           datasets: [
             {
-              label: "Wind",
+              label: "Wind last day",
               data: [], // Start with empty data
               tension: 0.1,
             },
@@ -109,7 +109,7 @@
       }
 
       function update_charts(chart, duration, interval) {
-        fetch(`wind/data_since?duration=${interval}&interval=${interval}`)
+        fetch(`api/data_since?duration=${interval}&interval=${interval}`)
           .then((response) => response.json())
           .then((datalist) => {
             datalist.forEach((data) => {
@@ -126,7 +126,7 @@
       }
 
       function fill_then_update_charts(chart, duration, interval) {
-        fetch(`wind/data_since?duration=${duration}&interval=${interval}`)
+        fetch(`api/data_since?duration=${duration}&interval=${interval}`)
           .then((response) => response.json())
           .then((datalist) => {
             datalist.forEach((data) => {
@@ -140,7 +140,7 @@
       }
 
       function update_realtime_chart(period) {
-        fetch(`wind/current`)
+        fetch(`api/current`)
           .then((response) => response.json())
           .then((data) => {
             const newValue = data.vel.toFixed(1);
@@ -158,8 +158,8 @@
       }
 
 
-      fill_then_update_charts(realtimeChart, 1200.0, 2.25);
-      fill_then_update_charts(hourlyChart, 7200.0, 600.0);
+      fill_then_update_charts(realtimeChart, 600.0, 2.25);
+      fill_then_update_charts(hourlyChart, 7200.0, 300.0);
       fill_then_update_charts(dailyChart, 86400.0, 3600.0);
       update_realtime_chart(5);
     </script>

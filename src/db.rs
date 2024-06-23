@@ -65,10 +65,10 @@ impl DB {
         Ok(db)
     }
 
-    pub async fn clean(&self) -> Result<()> {
+    pub async fn clean(&self, threshold: Duration) -> Result<()> {
         let now = secs_f64_since_epoch();
-        let one_month = now - 30.0 * 24.0 * 60.0 * 60.0;
-        sqlx::query!("DELETE FROM wind WHERE ts < ?1", one_month)
+        let oldest = now - threshold.as_secs_f64();
+        sqlx::query!("DELETE FROM wind WHERE ts < ?1", oldest)
             .execute(&self.pool)
             .await?;
         Ok(())
