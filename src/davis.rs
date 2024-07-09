@@ -160,6 +160,7 @@ pub async fn cleanup_loop(db: Arc<DB>, t: Duration) {
 
 /// at every period, convert counter value to wind speed using formula from manufacturer
 pub async fn fetch_data_loop(period: Duration, counter: Arc<AtomicU64>, db: Arc<DB>) {
+    let mut prev_count = 0;
     let mut interval = interval(period);
     interval.tick().await; // we skip first tick to get some data from sensor first
     loop {
@@ -168,11 +169,18 @@ pub async fn fetch_data_loop(period: Duration, counter: Arc<AtomicU64>, db: Arc<
         let wind_speed_mph = count as f64 * (2.25 / period.as_secs_f64());
         tracing::debug!("Number of IO edges: {:?}", &count);
         let vel = wind_speed_mph * 0.44704;
-        if vel > 30.0 {
+        if vel > 25.0 {
+            tracing::warn!(
+                "Filtering out very high edge count: {:?}, previous was {:?}, calculated vel is: {:?}",
+                &count,
+                &prev_count,
+                vel,
+            );
             // filter out too high values, something is wrong
             continue;
         }
-        tracing::info!("Read vel: {:?}", &vel);
+        prev_count = count;
+        tracing::debug!("Read vel: {:?}", &vel);
         if let Err(err) = db.insert_measurement(vel, 0).await {
             tracing::error!("Failed to write measurement in DB!, {:?}", err);
         }

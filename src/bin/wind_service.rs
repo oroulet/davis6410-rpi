@@ -6,7 +6,7 @@ use clap::{arg, Command};
 use davis_rpi::{api::WindServer, davis::Davis};
 use tokio::signal;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 

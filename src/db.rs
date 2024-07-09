@@ -149,7 +149,6 @@ impl DB {
             };
             measurements.push(mesurement);
         }
-        tracing::info!("Sending range: {:?}", &measurements);
         Ok(measurements)
     }
 
@@ -157,7 +156,6 @@ impl DB {
         let row = sqlx::query!("SELECT ts, vel, direction  FROM wind ORDER BY ts DESC LIMIT 1",)
             .fetch_one(&self.pool)
             .await?;
-        tracing::info!("Sending last data: {:?}", &row);
         Ok(Measurement {
             ts: row.ts.ok_or_else(|| anyhow::anyhow!("not found"))?,
             vel: row.vel.ok_or_else(|| anyhow::anyhow!("Not found"))?,
@@ -172,7 +170,6 @@ impl DB {
         let row = sqlx::query!("SELECT ts, vel, direction  FROM wind ORDER BY ts ASC LIMIT 1",)
             .fetch_one(&self.pool)
             .await?;
-        tracing::info!("Sending oldest data: {:?}", &row);
         Ok(Measurement {
             ts: row.ts.ok_or_else(|| anyhow::anyhow!("not found"))?,
             vel: row.vel.ok_or_else(|| anyhow::anyhow!("Not found"))?,
